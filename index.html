@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>English Practice Room</title>
+    <style>
+      body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; text-align: center; }
+      .header { background-color: #4285f4; color: white; padding: 15px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+      .chat-container { background-color: white; border-radius: 10px; padding: 20px; height: 350px; overflow-y: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; display: flex; flex-direction: column; }
+      .message { margin-bottom: 15px; padding: 12px 18px; border-radius: 20px; max-width: 80%; text-align: left; line-height: 1.4; }
+      .ai-msg { background-color: #e3f2fd; align-self: flex-start; border-bottom-left-radius: 5px; }
+      .student-msg { background-color: #e8f5e9; align-self: flex-end; border-bottom-right-radius: 5px; }
+      .mic-button { background-color: #34a853; color: white; font-size: 18px; font-weight: bold; border: none; padding: 15px 30px; border-radius: 30px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2); transition: background-color 0.3s; }
+      .mic-button:hover { background-color: #2b8c45; }
+      .mic-button:disabled { background-color: #9e9e9e; cursor: not-allowed; }
+      #status { margin-top: 10px; font-size: 14px; color: #666; font-style: italic; }
+    </style>
+  </head>
+  <body>
+
+    <div class="header">
+      <h2>🗣️ English Practice Room</h2>
+      <p>Read your lesson, then press the mic to talk!</p>
+    </div>
+
+    <div class="chat-container" id="chatBox">
+      <div class="message ai-msg">Hello! I am ready to listen. Read your ELPA21 speaking prompt, press the green microphone button, and start talking!</div>
+    </div>
+
+    <button class="mic-button" id="micBtn" onclick="startRecording()">🎤 Tap to Speak</button>
+    <div id="status"></div>
+
+    <script>
+      // =========================================================
+      // 1. PASTE YOUR NEW GOOGLE APPS SCRIPT WEB APP URL HERE
+      // =========================================================
+      const GOOGLE_API_URL = "https://script.google.com/macros/s/AKfycbxFmnD0v3SB0z7TzcM4pv7RMFIjxKx1JpcUQrMT__ysMsToEFhsi6OubhnfUqtBKbEN/exec";
+
+      // 2. Grabbing the IDs from the URL link you give the student
+      const urlParams = new URLSearchParams(window.location.search);
+      const studentId = urlParams.get('studentId') || "Student_01";
+      const lessonId = urlParams.get('lessonId') || "Lsn_123";
+
+      function startRecording() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        
+        if (!SpeechRecognition) {
+          alert("Your browser doesn't support the microphone. Please use Google Chrome.");
+          return;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'en-US';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        const micBtn = document.getElementById('micBtn');
+        const status = document.getElementById('status');
+
+        micBtn.disabled = true;
+        micBtn.innerText = "🔴 Listening...";
+        status.innerText = "Speak now...";
+
+        recognition.start();
+
+        recognition.onresult = (event) => {
+          const transcript = event.results[0][0].transcript;
+          addMessage(transcript, 'student-msg');
+          
+          status.innerText = "Thinking...";
+          micBtn.innerText = "⏳ Wait...";
+          
+          // Construct the API call to Google
+          const requestUrl = `${GOOGLE_API_URL}?action=oralPractice&studentId=${studentId}&lessonId=${lessonId}&transcript=${encodeURIComponent(transcript)}`;
+
+          fetch(requestUrl)
+            .then(response => response.json())
+            .then(data => {
+              addMessage(data.reply, 'ai-msg');
+              resetMic();
+            })
+            .catch(error => {
+              addMessage("I had trouble connecting. Check your Google Script URL!", 'ai-msg');
+              resetMic();
+            });
+        };
+
+        recognition.onspeechend = () => { recognition.stop(); };
+        recognition.onerror = () => { 
+          status.innerText = "Microphone error. Try again."; 
+          resetMic(); 
+        };
+      }
+
+      function resetMic() {
+        document.getElementById('micBtn').disabled = false;
+        document.getElementById('micBtn').innerText = "🎤 Tap to Speak";
+        document.getElementById('status').innerText = "";
+      }
+
+      function addMessage(text, className) {
+        const chatBox = document.getElementById('chatBox');
+        const newDiv = document.createElement('div');
+        newDiv.className = "message " + className;
+        newDiv.innerText = text;
+        chatBox.appendChild(newDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+      }
+    </script>
+  </body>
+</html>
