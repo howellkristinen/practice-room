@@ -6,18 +6,23 @@
     <title>ELPA21 Speaking Practice</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .container { background-color: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+        .container { background-color: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 100%; max-width: 450px; text-align: center; overflow-y: auto; max-height: 95vh; }
         
         /* New Student Header Style */
         .student-header { background: #e8f0fe; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #c2d7f9; }
         .student-header h2 { margin: 0; color: #1967d2; font-size: 1.4em; }
         .student-header p { margin: 5px 0 0; color: #5f6368; font-size: 0.9em; font-weight: bold; }
 
-        .mic-button { background-color: #34a853; color: white; border: none; border-radius: 50%; width: 80px; height: 80px; font-size: 30px; cursor: pointer; transition: transform 0.2s, background-color 0.2s; box-shadow: 0 4px 10px rgba(52, 168, 83, 0.3); }
+        /* New Prompt Box Style */
+        .prompt-box { background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #ffeeba; text-align: left; }
+        .prompt-box h3 { margin: 0 0 10px 0; color: #856404; font-size: 1.1em; border-bottom: 1px solid #ffeeba; padding-bottom: 5px; }
+        .prompt-box p { margin: 0; color: #533f03; font-size: 1em; line-height: 1.4; }
+
+        .mic-button { background-color: #34a853; color: white; border: none; border-radius: 50%; width: 80px; height: 80px; font-size: 30px; cursor: pointer; transition: transform 0.2s, background-color 0.2s; box-shadow: 0 4px 10px rgba(52, 168, 83, 0.3); margin-top: 10px;}
         .mic-button:active { transform: scale(0.9); background-color: #2d8e47; }
         .mic-button.recording { background-color: #ea4335; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(234, 67, 53, 0.7); } 70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(234, 67, 53, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(234, 67, 53, 0); } }
-        #status { margin-top: 20px; color: #555; font-weight: 500; min-height: 1.2em; }
+        #status { margin-top: 15px; color: #555; font-weight: 500; min-height: 1.2em; }
         #response { margin-top: 20px; padding: 15px; background-color: #f9f9f9; border-radius: 8px; border-left: 5px solid #34a853; text-align: left; display: none; font-size: 1.05em; line-height: 1.4; color: #333; }
         .score-display { font-weight: bold; font-size: 1.2em; color: #1967d2; margin-bottom: 10px; display: block; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
     </style>
@@ -30,26 +35,63 @@
         <p id="display-id">ID: Checking...</p>
     </div>
 
+    <div class="prompt-box" id="prompt-box">
+        <h3>🗣️ Speaking Task</h3>
+        <p id="prompt-text">Loading your specific prompt...</p>
+    </div>
+
     <button id="mic-btn" class="mic-button">🎤</button>
-    <p id="status">Tap the mic to start speaking</p>
+    <p id="status">Read the prompt above, then tap to answer.</p>
     <div id="response"></div>
 </div>
 
 <script>
-    // 1. YOUR SETTINGS - REPLACE THE URL BELOW WITH YOUR NEW GOOGLE WEB APP URL
+    // 1. YOUR SETTINGS
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxEVT8PObx2cNMS-fnJThz1BPnvxnMXFwdl7nXHnKfzv8V9EvMuYH_tupIgkaYnLAz1/exec";
 
-    // 2. GRAB DATA FROM THE URL (the "ID Tags")
+    // 2. GRAB DATA FROM THE URL
     const urlParams = new URLSearchParams(window.location.search);
     const studentId = urlParams.get('studentId') || "Unknown";
     const studentName = urlParams.get('studentName') || "Student";
     const lessonId = urlParams.get('lessonId') || "Lsn_001";
+    let activePrompt = "Discuss today's lesson."; // Backup prompt
 
-    // 3. UPDATE THE SCREEN
+    // 3. UPDATE THE HEADER
     document.getElementById('display-name').innerText = "Welcome, " + studentName + "!";
     document.getElementById('display-id').innerText = "Student ID: " + studentId;
 
-    // 4. VOICE LOGIC
+    // 4. NEW FUNCTION: FETCH THE LESSON AND EXTRACT THE PROMPT
+    async function fetchLessonPrompt() {
+        try {
+            const res = await fetch(GOOGLE_SCRIPT_URL + "?lessonId=" + lessonId);
+            const data = await res.json();
+            const fullLesson = data.prompt;
+
+            // Smart text cutter: Extracts only the text under the Oral Practice header
+            if (fullLesson && fullLesson.includes("🗣️ ORAL LANGUAGE PRACTICE")) {
+                let parts = fullLesson.split("🗣️ ORAL LANGUAGE PRACTICE");
+                let textAfterHeader = parts[1];
+                
+                // Cut it off before the Comprehension Questions start
+                if (textAfterHeader.includes("❓ COMPREHENSION QUESTIONS")) {
+                    activePrompt = textAfterHeader.split("❓ COMPREHENSION QUESTIONS")[0].trim();
+                } else {
+                    activePrompt = textAfterHeader.trim();
+                }
+            } else {
+                activePrompt = "Could not find a specific prompt. Please summarize what you learned in today's lesson.";
+            }
+
+            document.getElementById('prompt-text').innerText = activePrompt;
+        } catch (err) {
+            document.getElementById('prompt-text').innerText = "Network error: Please summarize what you learned today.";
+        }
+    }
+
+    // Call the function as soon as the page loads
+    fetchLessonPrompt();
+
+    // 5. VOICE LOGIC
     const micBtn = document.getElementById('mic-btn');
     const status = document.getElementById('status');
     const responseDiv = document.getElementById('response');
@@ -62,7 +104,6 @@
         recognition.lang = 'en-US';
 
         micBtn.onclick = () => {
-            // Clear previous feedback when starting a new recording
             responseDiv.style.display = "none";
             responseDiv.innerHTML = "";
             recognition.start();
@@ -73,29 +114,25 @@
         recognition.onresult = async (event) => {
             micBtn.classList.remove('recording');
             const transcript = event.results[0][0].transcript;
-            status.innerText = "Grading... Please wait a few seconds.";
+            status.innerText = "Grading against your prompt... Please wait.";
 
-            // Send to Google Sheets and Wait for AI Feedback
             try {
                 const res = await fetch(GOOGLE_SCRIPT_URL, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'text/plain;charset=utf-8'
-                    },
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify({
                         studentId: studentId,
                         studentName: studentName,
                         lessonId: lessonId,
-                        type: 'assessment', // Added this to route perfectly to your Assessments tab!
+                        type: 'assessment',
+                        prompt: activePrompt, // Sends the specific question to the AI Grader!
                         text: transcript
                     })
                 });
                 
-                // Parse the JSON data returned from Gemini
                 const data = await res.json();
                 
                 status.innerText = "Grading Complete!";
-                // Format the live AI feedback on the screen
                 responseDiv.innerHTML = "<span class='score-display'>ELPA21 Score: " + data.score + " / 5</span>" + data.reply;
                 responseDiv.style.display = "block";
                 
