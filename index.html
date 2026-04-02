@@ -67,42 +67,23 @@
     document.getElementById('display-name').innerText = "Welcome, " + studentName + "!";
     document.getElementById('display-id').innerText = "Student ID: " + studentId;
 
-    // 4. FETCH THE LESSON AND EXTRACT THE PROMPT
+// 4. FETCH THE LESSON AND EXTRACT THE PROMPT
     async function fetchLessonPrompt() {
         try {
             const res = await fetch(GOOGLE_SCRIPT_URL + "?lessonId=" + lessonId);
             const data = await res.json();
-            const fullLesson = data.prompt;
 
-            if (fullLesson && fullLesson !== "Lesson ID not found.") {
-                document.getElementById('full-lesson-text').innerHTML = fullLesson.replace(/\n/g, '<br>');
-            } else {
-                document.getElementById('full-lesson-text').innerHTML = "We couldn't find this lesson. Please check with your teacher.";
+            // 1. Put the full lesson text in the top box
+            if (data.fullLesson) {
+                document.getElementById('full-lesson-text').innerHTML = data.fullLesson.replace(/\n/g, '<br>');
             }
 
-            // THE UPGRADED AI-PROOF CUTTER
-            if (fullLesson && fullLesson.includes("ORAL LANGUAGE PRACTICE")) {
-                // Split by just the words, ignoring the emoji
-                let parts = fullLesson.split("ORAL LANGUAGE PRACTICE");
-                let textAfterHeader = parts[1];
-                
-                // Cut off at the comprehension questions
-                if (textAfterHeader.includes("COMPREHENSION")) {
-                    activePrompt = textAfterHeader.split("COMPREHENSION")[0];
-                } else {
-                    activePrompt = textAfterHeader;
-                }
-
-                // Clean up the AI's extra flair (removes "(App Practice)" and formatting asterisks)
-                activePrompt = activePrompt.replace(/\(App Practice\)/gi, "");
-                activePrompt = activePrompt.replace(/\*/g, "");
-                activePrompt = activePrompt.trim();
-
-            } else {
-                activePrompt = "Could not find a specific prompt. Please summarize what you learned in today's lesson.";
+            // 2. Put the specific prompt in the bottom box
+            if (data.prompt) {
+                activePrompt = data.prompt;
+                document.getElementById('prompt-text').innerText = activePrompt;
             }
 
-            document.getElementById('prompt-text').innerText = activePrompt;
         } catch (err) {
             document.getElementById('full-lesson-text').innerHTML = "Network error: Could not load the lesson.";
             document.getElementById('prompt-text').innerText = "Network error: Please summarize what you learned today.";
