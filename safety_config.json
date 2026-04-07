@@ -1,0 +1,4 @@
+{
+  "banned_keywords": ["violence", "blood", "scary", "weapons", "gun", "drugs"],
+  "denied_message": "Your prompt contains words that do not follow GMSD policy. Please try a different academic description."
+}
